@@ -1,20 +1,21 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { Provider, useDispatch } from 'react-redux';
+import { store } from './src/redux/store';
+import { fetchStudentsFromStorage } from './src/redux/studentsSlice';
+import AdminScreen from './src/screens/AdminScreen';
+
+const Loader = () => {
+  const dispatch = useDispatch();
+  useEffect(() => {
+    dispatch(fetchStudentsFromStorage()); // carrega alunos ao abrir o app
+  }, [dispatch]);
+  return <AdminScreen />; // aqui você pode depois colocar a navegação
+};
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <Provider store={store}>
+      <Loader />
+    </Provider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#2ff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
