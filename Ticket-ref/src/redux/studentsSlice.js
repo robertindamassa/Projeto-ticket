@@ -1,42 +1,31 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createSlice } from '@reduxjs/toolkit';
 
-// thunk para buscar alunos do AsyncStorage
-export const fetchStudentsFromStorage = createAsyncThunk(
-  'students/fetchFromStorage',
-  async () => {
-    const data = await AsyncStorage.getItem('students');
-    return data ? JSON.parse(data) : [];
-  }
-);
+let nextId = 1; // contador para IDs e matrículas
 
-const studentsSlice = createSlice({
+export const studentsSlice = createSlice({
   name: 'students',
   initialState: {
-    list: [],
-    status: 'idle',
+    students: [],
   },
   reducers: {
     addStudent: (state, action) => {
-      state.list.push(action.payload);
-      AsyncStorage.setItem('students', JSON.stringify(state.list));
+      const newStudent = {
+        id: nextId.toString(),
+        name: action.payload.name,
+        matricula: (1000 + nextId).toString(), // matrícula automática
+        hasTicket: false,
+        ticketUsed: false,
+      };
+      state.students.push(newStudent);
+      nextId += 1;
     },
-  },
-  extraReducers: (builder) => {
-    builder
-      .addCase(fetchStudentsFromStorage.pending, (state) => {
-        state.status = 'loading';
-      })
-      .addCase(fetchStudentsFromStorage.fulfilled, (state, action) => {
-        state.status = 'succeeded';
-        state.list = action.payload;
-      })
-      .addCase(fetchStudentsFromStorage.rejected, (state) => {
-        state.status = 'failed';
+    resetTickets: (state) => {
+      state.students.forEach(student => {
+        student.ticketUsed = false;
       });
+    },
   },
 });
 
-
-export const { addStudent, resetTickets, giveTicket, useTicket, setStudents } = studentsSlice.actions;
+export const { addStudent, resetTickets } = studentsSlice.actions;
 export default studentsSlice.reducer;
