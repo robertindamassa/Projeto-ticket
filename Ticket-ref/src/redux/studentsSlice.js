@@ -1,47 +1,42 @@
-import { createSlice } from '@reduxjs/toolkit';
-import { saveStudentsToStorage } from '../storage';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// thunk para buscar alunos do AsyncStorage
+export const fetchStudentsFromStorage = createAsyncThunk(
+  'students/fetchFromStorage',
+  async () => {
+    const data = await AsyncStorage.getItem('students');
+    return data ? JSON.parse(data) : [];
+  }
+);
 
 const studentsSlice = createSlice({
   name: 'students',
-  initialState: [],
+  initialState: {
+    list: [],
+    status: 'idle',
+  },
   reducers: {
     addStudent: (state, action) => {
-      state.push({
-        id: Date.now().toString(),
-        name: action.payload.name,
-        matricula: action.payload.matricula,
-        hasTicket: false,
-        ticketUsed: false,
-      });
-      saveStudentsToStorage(state);
-    },
-    resetTickets: (state) => {
-      state.forEach(student => {
-        student.hasTicket = false;
-        student.ticketUsed = false;
-      });
-      saveStudentsToStorage(state);
-    },
-    giveTicket: (state, action) => {
-      const student = state.find(s => s.id === action.payload);
-      if (student) {
-        student.hasTicket = true;
-        student.ticketUsed = false;
-        saveStudentsToStorage(state);
-      }
-    },
-    useTicket: (state, action) => {
-      const student = state.find(s => s.id === action.payload);
-      if (student && student.hasTicket) {
-        student.ticketUsed = true;
-        saveStudentsToStorage(state);
-      }
-    },
-    setStudents: (state, action) => {
-      return action.payload;
+      state.list.push(action.payload);
+      AsyncStorage.setItem('students', JSON.stringify(state.list));
     },
   },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchStudentsFromStorage.pending, (state) => {
+        state.status = 'loading';
+      })
+      .addCase(fetchStudentsFromStorage.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.list = action.payload;
+      })
+      .addCase(fetchStudentsFromStorage.rejected, (state) => {
+        state.status = 'failed';
+      });
+  },
 });
+
 
 export const { addStudent, resetTickets, giveTicket, useTicket, setStudents } = studentsSlice.actions;
 export default studentsSlice.reducer;
