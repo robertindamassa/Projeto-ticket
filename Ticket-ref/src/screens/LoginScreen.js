@@ -10,6 +10,9 @@ export default function LoginScreen({ navigation }) {
   const [role, setRole] = useState('aluno');
   const [error, setError] = useState('');
 
+  // estado para recuperação de matrícula
+  const [email, setEmail] = useState('');
+
   const [modalVisible, setModalVisible] = useState(false);
   const [newPassword, setNewPassword] = useState('');
 
@@ -28,6 +31,7 @@ export default function LoginScreen({ navigation }) {
     loadPassword();
   }, []);
 
+  // login normal
   const handleLogin = () => {
     if (role === 'administrador') {
       if (username === defaultAdminUsername && password === storedAdminPassword) {
@@ -49,6 +53,27 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
+  // recuperação de matrícula (para aluno)
+  const handleRecuperarMatricula = async () => {
+    try {
+      const alunos = await AsyncStorage.getItem('@students');
+      if (!alunos) return Alert.alert('Nenhum aluno cadastrado.');
+
+      const alunosParse = JSON.parse(alunos);
+      const alunoEncontrado = alunosParse.find(a => a.email === email);
+
+      if (alunoEncontrado) {
+        Alert.alert(`Sua matrícula é: ${alunoEncontrado.matricula}`);
+      } else {
+        Alert.alert('Aluno não encontrado com esse e-mail.');
+      }
+    } catch (error) {
+      console.log(error);
+      Alert.alert('Erro ao recuperar matrícula.');
+    }
+  };
+
+  // redefinição de senha (para admin)
   const handleForgotPassword = () => {
     if (role !== 'administrador') {
       Alert.alert('Apenas administradores podem redefinir a senha.');
@@ -101,11 +126,31 @@ export default function LoginScreen({ navigation }) {
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <Button title="Entrar" onPress={handleLogin} />
+
+      {/* Botão para admin */}
       {role === 'administrador' && (
         <Button title="Esqueci a senha" color="orange" onPress={handleForgotPassword} />
       )}
 
-      {/* Modal para nova senha */}
+      {/* Campo e botão para aluno recuperar matrícula */}
+      {role === 'aluno' && (
+        <View style={{ marginTop: 20 }}>
+          <Text style={{ marginBottom: 5 }}>Digite seu e-mail para recuperar a matrícula:</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="E-mail cadastrado"
+            value={email}
+            onChangeText={setEmail}
+          />
+          <Button
+            title="Esqueci minha matrícula"
+            color="orange"
+            onPress={handleRecuperarMatricula}
+          />
+        </View>
+      )}
+
+      {/* Modal para nova senha do admin */}
       <Modal
         animationType="slide"
         transparent
