@@ -34,7 +34,14 @@ export default function AdminScreen({ navigation }) {
       Alert.alert("Atenção", "Preencha todos os campos para cadastrar.");
       return;
     }
-
+    if (!email.includes('@')) {
+      Alert.alert("E-mail inválido", "O e-mail deve conter '@'.");
+      return;
+    }
+    if (/\d/.test(name)) {
+      Alert.alert("Nome inválido", "O nome não pode conter números.");
+      return;
+    }
     if (editingId) {
       dispatch(updateStudent({ id: editingId, name, email, turma, turno }));
       setEditingId(null);

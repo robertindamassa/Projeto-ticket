@@ -55,6 +55,10 @@ export default function LoginScreen({ navigation }) {
 
   // recuperação de matrícula (para aluno)
   const handleRecuperarMatricula = async () => {
+    if (!email.includes('@')) {
+      Alert.alert('Digite um e-mail válido com "@"!');
+      return;
+    }
     try {
       const alunos = await AsyncStorage.getItem('@students');
       if (!alunos) return Alert.alert('Nenhum aluno cadastrado.');
