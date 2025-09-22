@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Button, StyleSheet } from 'react-native';
+import { View, Text, Button, StyleSheet, Image } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 
 export default function IntervalScreen() {
   const [isBreak, setIsBreak] = useState(false);
   const [timeLeft, setTimeLeft] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [nextInterval, setNextInterval] = useState('');
 
-  // Horário de Brasília: 16:02 até 16:22
   function getBrasiliaDate() {
     const now = new Date();
     return new Date(now.getTime() - (now.getTimezoneOffset() * 60000) - (3 * 60 * 60 * 1000));
@@ -20,42 +21,83 @@ export default function IntervalScreen() {
   }
 
   useEffect(() => {
+    setLoading(true);
+    // Simula coleta de informações por 1.2s
+    const infoTimeout = setTimeout(() => {
+      setLoading(false);
+    }, 1200);
     const timer = setInterval(() => {
       const agora = getBrasiliaDate();
       const diaSemana = agora.getDay(); // 0=Dom, 1=Seg, ..., 6=Sáb
+      let intervaloComeco = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 16, 0, 0, 0);
+      let intervaloFim = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 16, 20, 0, 0);
+      let proximoIntervalo = '';
       if (diaSemana >= 1 && diaSemana <= 4) { // Segunda a quinta
-        const intervaloComeco = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 16, 0, 0, 0);
-        const intervaloFim = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 16, 20, 0, 0);
-        if (agora >= intervaloComeco && agora <= intervaloFim) {
+        if (agora < intervaloComeco) {
+          const diff = Math.floor((intervaloComeco - agora) / 1000);
+          setIsBreak(false);
+          setTimeLeft(`Faltam ${formatTime(diff)} para o próximo intervalo`);
+          proximoIntervalo = intervaloComeco;
+        } else if (agora >= intervaloComeco && agora <= intervaloFim) {
           setIsBreak(true);
           const diff = Math.floor((intervaloFim - agora) / 1000);
           setTimeLeft(`Intervalo acaba em ${formatTime(diff)}`);
-        } else if (agora < intervaloComeco) {
-          const diff = Math.floor((intervaloComeco - agora) / 1000);
-          setIsBreak(false);
-          setTimeLeft(`Intervalo começa em ${formatTime(diff)}`);
+          proximoIntervalo = new Date(intervaloComeco.getTime() + 24 * 60 * 60 * 1000); // próximo dia
         } else {
+          // Já passou o intervalo hoje, mostra tempo para amanhã
+          let nextDay = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + 1, 16, 0, 0, 0);
+          // Se sexta, pula para segunda
+          if (diaSemana === 4) {
+            nextDay = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + 4, 16, 0, 0, 0);
+          }
+          const diff = Math.floor((nextDay - agora) / 1000);
           setIsBreak(false);
-          setTimeLeft('Intervalo já acabou hoje');
+          setTimeLeft(`Faltam ${formatTime(diff)} para o próximo intervalo`);
+          proximoIntervalo = nextDay;
         }
       } else {
+        // Fim de semana, mostra tempo para segunda
+        let nextMonday = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + ((8 - diaSemana) % 7), 16, 0, 0, 0);
+        const diff = Math.floor((nextMonday - agora) / 1000);
         setIsBreak(false);
-        setTimeLeft('Hoje não tem intervalo (apenas de segunda a quinta às 16:00)');
+        setTimeLeft(`Faltam ${formatTime(diff)} para o próximo intervalo`);
+        proximoIntervalo = nextMonday;
       }
+      setNextInterval(proximoIntervalo);
     }, 1000);
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      clearTimeout(infoTimeout);
+    };
   }, []);
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.card}>
+          <Image
+            source={{ uri: 'https://media.tenor.com/On7kvXhzml4AAAAj/loading-gif.gif' }}
+            style={{ width: 80, height: 80, marginBottom: 10 }}
+            resizeMode="contain"
+          />
+          <Text style={{ fontSize: 18, color: '#1976d2', fontWeight: 'bold', marginTop: 10 }}>Carregando informações...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <View style={styles.card}>
-    
-        <MaterialIcons name="free-breakfast" size={48} color="#1976d2" style={{ marginBottom: 10 }} />
-        <Text style={styles.title}>Intervalo</Text>
+        <MaterialIcons name="free-breakfast" size={54} color="#1976d2" style={{ marginBottom: 10 }} />
+        <Text style={styles.title}>Intervalo Escolar</Text>
         <Text style={isBreak ? styles.statusActive : styles.statusInactive}>
           {isBreak ? 'Estamos no intervalo!' : 'Fora do intervalo'}
         </Text>
         <Text style={styles.timer}>{timeLeft}</Text>
+        <Text style={{ fontSize: 16, color: '#1976d2', marginTop: 10 }}>
+          Próximo intervalo: {nextInterval ? new Date(nextInterval).toLocaleString('pt-BR', { weekday: 'long', hour: '2-digit', minute: '2-digit' }) : ''}
+        </Text>
       </View>
     </View>
   );
