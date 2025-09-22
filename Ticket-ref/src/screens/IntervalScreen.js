@@ -22,19 +22,25 @@ export default function IntervalScreen() {
   useEffect(() => {
     const timer = setInterval(() => {
       const agora = getBrasiliaDate();
-      const intervaloComeco = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 16, 2, 0, 0);
-      const intervaloFim = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 16, 22, 0, 0);
-      if (agora >= intervaloComeco && agora <= intervaloFim) {
-        setIsBreak(true);
-        const diff = Math.floor((intervaloFim - agora) / 1000);
-        setTimeLeft(`Intervalo acaba em ${formatTime(diff)}`);
-      } else if (agora < intervaloComeco) {
-        const diff = Math.floor((intervaloComeco - agora) / 1000);
-        setIsBreak(false);
-        setTimeLeft(`Intervalo começa em ${formatTime(diff)}`);
+      const diaSemana = agora.getDay(); // 0=Dom, 1=Seg, ..., 6=Sáb
+      if (diaSemana >= 1 && diaSemana <= 4) { // Segunda a quinta
+        const intervaloComeco = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 16, 0, 0, 0);
+        const intervaloFim = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 16, 20, 0, 0);
+        if (agora >= intervaloComeco && agora <= intervaloFim) {
+          setIsBreak(true);
+          const diff = Math.floor((intervaloFim - agora) / 1000);
+          setTimeLeft(`Intervalo acaba em ${formatTime(diff)}`);
+        } else if (agora < intervaloComeco) {
+          const diff = Math.floor((intervaloComeco - agora) / 1000);
+          setIsBreak(false);
+          setTimeLeft(`Intervalo começa em ${formatTime(diff)}`);
+        } else {
+          setIsBreak(false);
+          setTimeLeft('Intervalo já acabou hoje');
+        }
       } else {
         setIsBreak(false);
-        setTimeLeft('Intervalo já acabou');
+        setTimeLeft('Hoje não tem intervalo (apenas de segunda a quinta às 16:00)');
       }
     }, 1000);
     return () => clearInterval(timer);
@@ -43,6 +49,7 @@ export default function IntervalScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.card}>
+    
         <MaterialIcons name="free-breakfast" size={48} color="#1976d2" style={{ marginBottom: 10 }} />
         <Text style={styles.title}>Intervalo</Text>
         <Text style={isBreak ? styles.statusActive : styles.statusInactive}>
