@@ -132,7 +132,7 @@ export default function LoginScreen({ navigation }) {
         <Button title="Esqueci a senha" color="orange" onPress={handleForgotPassword} />
       )}
 
-      {/* Campo e botão para aluno recuperar matrícula */}
+      {/* Campo e botão para aluno recuperar matrícula ok */}
       {role === 'aluno' && (
         <View style={{ marginTop: 20 }}>
           <Text style={{ marginBottom: 5 }}>Digite seu e-mail para recuperar a matrícula:</Text>
@@ -185,18 +185,4 @@ const styles = StyleSheet.create({
   modalContainer: { flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
   modalContent: { backgroundColor: '#fff', margin: 20, padding: 20, borderRadius: 10 },
 });
-
-// Função simples para Tickettab
-export function Tickettab() {
-  return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f5' }}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#1976d2', marginBottom: 8 }}>Recebimento de Ticket</Text>
-      <Text style={{ fontSize: 16, color: '#333', marginBottom: 16, textAlign: 'center' }}>
-        Aqui você poderá receber seu ticket quando disponível.
-      </Text>
-      <Text style={{ fontSize: 16, color: '#888', marginTop: 16, fontWeight: 'bold' }}>
-        Status: Não disponível
-      </Text>
-    </View>
-  );
-}
+//oi
