@@ -1,63 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Button, StyleSheet, Alert, TouchableOpacity } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
-import { useSelector, useDispatch } from 'react-redux';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { resetTickets } from '../redux/studentsSlice';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { MaterialIcons, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import IntervalScreen from './IntervalScreen';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
-export default function StudentScreen({ route, navigation }) {
+const Tab = createBottomTabNavigator();
+
+function HomeScreen({ student }) {
   const [dateTime, setDateTime] = useState(new Date());
-
   useEffect(() => {
     const timer = setInterval(() => {
-      // Horário de Brasília (GMT-3)
       const now = new Date();
       const brasilia = new Date(now.getTime() - (now.getTimezoneOffset() * 60000) - (3 * 60 * 60 * 1000));
       setDateTime(brasilia);
     }, 1000);
     return () => clearInterval(timer);
   }, []);
-  const { student } = route.params; // recebe o objeto aluno diretamente
-  const dispatch = useDispatch();
-
-  const liberarTicket = () => {
-    if (!student) return;
-    const horaAtual = new Date().getHours();
-    let permitido = false;
-    if (student.turno === 'manhã' && horaAtual >= 6 && horaAtual < 12) permitido = true;
-    if (student.turno === 'tarde' && horaAtual >= 12 && horaAtual < 18) permitido = true;
-    if (student.turno === 'noite' && horaAtual >= 18 && horaAtual <= 23) permitido = true;
-    if (!permitido) {
-      Alert.alert('Fora do horário', 'Não é possível liberar o ticket fora do turno da sua turma.');
-      return;
-    }
-    if (student.ticketUsed) {
-      Alert.alert('Atenção', 'Você já utilizou seu ticket hoje.');
-      return;
-    }
-    // Marca ticket como usado
-    student.ticketUsed = true;
-    // Atualiza no AsyncStorage
-    AsyncStorage.getItem('@students').then(alunos => {
-      if (alunos) {
-        const alunosParse = JSON.parse(alunos);
-        const idx = alunosParse.findIndex(a => a.id === student.id);
-        if (idx !== -1) {
-          alunosParse[idx].ticketUsed = true;
-          AsyncStorage.setItem('@students', JSON.stringify(alunosParse));
-        }
-      }
-    });
-    Alert.alert('Sucesso', 'Ticket liberado com sucesso!');
-  };
-
-  if (!student) return <Text>Carregando...</Text>;
-
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.logoutButton} onPress={() => navigation.replace('Login')}>
-        <Text style={styles.logoutText}>Sair</Text>
-      </TouchableOpacity>
       <Text style={styles.title}>Bem-vindo</Text>
       <Text style={{ fontSize: 20, marginBottom: 10 }}>{student.name}</Text>
       <View style={styles.clockContainer}>
@@ -71,7 +31,92 @@ export default function StudentScreen({ route, navigation }) {
           </Text>
         </View>
       </View>
-      {/* ...outros campos... */}
+      <View style={{ backgroundColor: '#e3f2fd', borderRadius: 10, padding: 12, marginTop: 18 }}>
+  <Text style={{ fontSize: 16, color: '#1976d2', fontWeight: 'bold', marginBottom: 6 }}>
+    Matrícula: <Text style={{ color: '#333' }}>{student.matricula}</Text>
+  </Text>
+  <Text style={{ fontSize: 16, color: '#1976d2', fontWeight: 'bold', marginBottom: 6 }}>
+    Turma: <Text style={{ color: '#333' }}>{student.turma}</Text>
+  </Text>
+  <Text style={{ fontSize: 16, color: '#1976d2', fontWeight: 'bold' }}>
+    Turno: <Text style={{ color: '#333' }}>{student.turno}</Text>
+  </Text>
+</View>
+    </View>
+  );
+}
+
+
+function TicketTab() {
+  const [isInRegion, setIsInRegion] = useState(false);
+  const [ticketStatus, setTicketStatus] = useState('Não disponível');
+  const [canReceive, setCanReceive] = useState(false);
+  const [receivedToday, setReceivedToday] = useState(false);
+  useEffect(() => {
+    const intervaloComeco = new Date();
+    intervaloComeco.setHours(10, 0, 0);
+    const agora = new Date();
+    const diffMin = (intervaloComeco - agora) / 60000;
+    setCanReceive(diffMin <= 5 && diffMin > 0);
+  }, []);
+  const handleReceiveTicket = () => {
+    if (receivedToday) return;
+    setTicketStatus('Ticket disponível');
+    setReceivedToday(true);
+  };
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Recebimento de Ticket</Text>
+      <TouchableOpacity
+        style={{ backgroundColor: isInRegion ? '#1976d2' : '#aaa', padding: 10, borderRadius: 8, marginBottom: 10 }}
+        onPress={() => setIsInRegion(!isInRegion)}
+      >
+        <Ionicons name="location" size={20} color="#fff" />
+        <Text style={{ color: '#fff', fontWeight: 'bold' }}>{isInRegion ? 'Dentro da escola' : 'Fora da escola'}</Text>
+      </TouchableOpacity>
+      {canReceive && isInRegion && !receivedToday ? (
+        <TouchableOpacity style={{ backgroundColor: '#43a047', padding: 12, borderRadius: 8 }} onPress={handleReceiveTicket}>
+          <MaterialCommunityIcons name="ticket-confirmation" size={24} color="#fff" />
+          <Text style={{ color: '#fff', fontWeight: 'bold' }}>Receber Ticket</Text>
+        </TouchableOpacity>
+      ) : (
+        <Text style={{ color: '#888', marginBottom: 10 }}>Ticket não disponível</Text>
+      )}
+      <Text style={{ marginTop: 10, fontWeight: 'bold' }}>Status: {ticketStatus}</Text>
+    </View>
+  );
+}
+
+export default function StudentScreen({ route, navigation }) {
+  const { student } = route.params;
+  return (
+    <View style={{ flex: 1 }}>
+      <TouchableOpacity style={styles.logoutButton} onPress={() => navigation.replace('Login')}>
+        <Text style={styles.logoutText}>Sair</Text>
+      </TouchableOpacity>
+      <Tab.Navigator
+        initialRouteName="Home"
+        screenOptions={({ route }) => ({
+          tabBarActiveTintColor: '#1976d2',
+          tabBarInactiveTintColor: '#888',
+          tabBarStyle: { backgroundColor: '#e3f2fd' },
+          tabBarIcon: ({ color, size }) => {
+            if (route.name === 'Home') {
+              return <MaterialIcons name="home" color={color} size={size} />;
+            } else if (route.name === 'Interval') {
+              return <MaterialIcons name="free-breakfast" color={color} size={size} />;
+            } else if (route.name === 'Ticket') {
+              return <MaterialCommunityIcons name="ticket-confirmation" color={color} size={size} />;
+            }
+          },
+        })}
+      >
+        <Tab.Screen name="Home" options={{ tabBarLabel: 'Início' }}>
+          {() => <HomeScreen student={student} />}
+        </Tab.Screen>
+  <Tab.Screen name="Interval" component={IntervalScreen} options={{ tabBarLabel: 'Intervalo' }} />
+        <Tab.Screen name="Ticket" component={TicketTab} options={{ tabBarLabel: 'Receber Ticket' }} />
+      </Tab.Navigator>
     </View>
   );
 }
@@ -112,12 +157,14 @@ const styles = StyleSheet.create({
   logoutButton: {
     position: 'absolute',
     top: 20,
-    left: 20,
+    right: 20,
     backgroundColor: '#f44336',
     paddingVertical: 6,
     paddingHorizontal: 14,
     borderRadius: 20,
     zIndex: 10,
+    elevation: 4,
+    opacity: 0.92,
   },
   logoutText: {
     color: '#fff',
