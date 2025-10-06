@@ -1,7 +1,8 @@
 import { createSlice } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-let nextId = 1;
+// Gera um id único simples usando timestamp + aleatório
+const generateId = () => `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
 
 export const studentsSlice = createSlice({
   name: 'students',
@@ -10,27 +11,38 @@ export const studentsSlice = createSlice({
   },
   reducers: {
     setStudents: (state, action) => {
-      state.students = action.payload.map((s) => ({
-        ...s,
-        email: s.email || '',
-        turma: s.turma || '',      // adiciona turma
-        turno: s.turno || '',      // adiciona turno
-      }));
-      nextId = state.students.length + 1;
+      // Normaliza a lista recebida garantindo ids únicos
+      const seen = new Set();
+      const normalized = action.payload.map((s) => {
+        let id = s.id;
+        if (!id || seen.has(id)) {
+          id = generateId();
+        }
+        seen.add(id);
+        return {
+          ...s,
+          id,
+          email: s.email || '',
+          turma: s.turma || '',
+          turno: s.turno || '',
+        };
+      });
+      state.students = normalized;
     },
     addStudent: (state, action) => {
+      const id = generateId();
+      const matricula = (1000 + state.students.length + 1).toString();
       const newStudent = {
-        id: nextId.toString(),
+        id,
         name: action.payload.name,
         email: action.payload.email,
-        matricula: (1000 + nextId).toString(),
+        matricula,
         hasTicket: false,
         ticketUsed: false,
-        turma: action.payload.turma || '',   // turma escolhida
-        turno: action.payload.turno || '',   // turno escolhido
+        turma: action.payload.turma || '',
+        turno: action.payload.turno || '',
       };
       state.students.push(newStudent);
-      nextId += 1;
       AsyncStorage.setItem('@students', JSON.stringify(state.students));
     },
     updateStudent: (state, action) => {

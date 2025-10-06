@@ -29,30 +29,73 @@ export default function AdminScreen({ navigation }) {
     loadStudents();
   }, [dispatch]);
 
-  const handleAddOrUpdate = () => {
+  const handleAddOrUpdate = async () => {
+    // Validações básicas
     if (!name.trim() || !email.trim() || !turma.trim() || !turno.trim()) {
       Alert.alert("Atenção", "Preencha todos os campos para cadastrar.");
       return;
     }
-    if (!email.includes('@')) {
-      Alert.alert("E-mail inválido", "O e-mail deve conter '@'.");
+
+    // Nome: apenas letras (maiúsculas/minúsculas) e espaços
+    const nomeValido = /^[A-Za-zÀ-ÖØ-öø-ÿ ]+$/.test(name.trim());
+    if (!nomeValido) {
+      Alert.alert("Nome inválido", "O nome só pode conter letras e espaços.");
       return;
     }
-    if (/\d/.test(name)) {
-      Alert.alert("Nome inválido", "O nome não pode conter números.");
+
+    // Email: obrigatório terminar com @gmail.com ou @hotmail.com
+    const emailValido = /@(?:gmail\.com|hotmail\.com)$/i.test(email.trim());
+    if (!emailValido) {
+      Alert.alert("E-mail inválido", "O e-mail deve terminar com @gmail.com ou @hotmail.com.");
       return;
     }
+
+    // Turma: exatamente 3 dígitos (ex: 222)
+    const turmaValida = /^\d{3}$/.test(turma.trim());
+    if (!turmaValida) {
+      Alert.alert("Turma inválida", "A turma deve conter exatamente 3 dígitos (ex: 222).");
+      return;
+    }
+
+    // Turno: somente manhã, tarde ou noite (aceita com ou sem acento e case-insensitive)
+    const turnoNormalized = turno.trim().toLowerCase();
+    const validTurnos = ['manhã', 'manha', 'tarde', 'noite'];
+    if (!validTurnos.includes(turnoNormalized)) {
+      Alert.alert("Turno inválido", "O turno deve ser 'manhã', 'tarde' ou 'noite'.");
+      return;
+    }
+
+    // Se estiver editando, atualiza; caso contrário adiciona
     if (editingId) {
       dispatch(updateStudent({ id: editingId, name, email, turma, turno }));
-      setEditingId(null);
     } else {
       dispatch(addStudent({ name, email, turma, turno }));
     }
 
+    // Determina o id correto para salvar como currentStudent
+    // Para novo aluno, o reducer gera o id baseado em students.length + 1
+    const novoIdGerado = editingId ? editingId : (students.length + 1).toString();
+
+    const currentStudent = {
+      id: editingId || novoIdGerado,
+      name,
+      email,
+      turma,
+      turno,
+    };
+
+    try {
+      await AsyncStorage.setItem('@currentStudent', JSON.stringify(currentStudent));
+    } catch (error) {
+      console.log('Erro ao salvar currentStudent no AsyncStorage:', error);
+    }
+
+    // Resetar campos e estado de edição
     setName('');
     setEmail('');
     setTurma('');
     setTurno('');
+    setEditingId(null);
   };
 
   const handleEdit = (student) => {

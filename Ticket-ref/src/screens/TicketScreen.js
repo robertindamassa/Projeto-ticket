@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Button } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Button, Alert } from 'react-native';
 import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getBrasiliaDate, formatDateKey } from '../utils/timeUtils';
 
 export default function TicketScreen() {
   const [isInRegion, setIsInRegion] = useState(false);
@@ -11,6 +13,9 @@ export default function TicketScreen() {
   const [accuracyMeters, setAccuracyMeters] = useState(null);
   const [userCoords, setUserCoords] = useState(null);
   const [schoolCoords, setSchoolCoords] = useState(null);
+
+  // chave onde o app estudante deve salvar o aluno logado (ajuste se diferente)
+  const CURRENT_STUDENT_KEY = '@currentStudent';
 
   // Endereço fornecido (sua solicitação)
   const SCHOOL_ADDRESS = 'R. Joacir dos Passos, 18 - Jardim Eldorado, Palhoça - SC, 88133-597';
@@ -75,8 +80,63 @@ export default function TicketScreen() {
     }
   }
 
-  const handleReceiveTicket = () => {
-    setTicketValidated(true);
+  // retorna Date do início do próximo intervalo baseado no turno
+  function getNextIntervalStart(turno, reference = new Date()) {
+    const ref = new Date(reference);
+    let target;
+    if (turno === 'manhã') {
+      target = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate(), 12, 0, 0); // 12:00
+    } else if (turno === 'tarde') {
+      target = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate(), 18, 0, 0); // 18:00
+    } else { // 'noite' ou outros
+      // próxima manhã às 6:00
+      target = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate(), 6, 0, 0);
+      if (target <= ref) target.setDate(target.getDate() + 1);
+    }
+    // se target já passou hoje, avançar um dia
+    if (target <= ref) target.setDate(target.getDate() + 1);
+    return target;
+  }
+
+  // tenta receber ticket: verifica se já há ticket hoje e se é permitido receber novamente
+  const handleReceiveTicket = async () => {
+    try {
+      const rawStudent = await AsyncStorage.getItem(CURRENT_STUDENT_KEY);
+      if (!rawStudent) {
+        Alert.alert('Erro', 'Aluno não encontrado. Faça login no app de estudante.');
+        return;
+      }
+      const student = JSON.parse(rawStudent);
+      const dateKey = formatDateKey(getBrasiliaDate());
+      const key = `ticket:${student.id}:${dateKey}`;
+
+      // checa ticket existente
+      const raw = await AsyncStorage.getItem(key);
+      const now = new Date();
+      if (raw) {
+        const existing = JSON.parse(raw);
+        // já recebeu: calcular próximo horário permitido (5 minutos antes do próximo intervalo)
+        const nextInterval = getNextIntervalStart(student.turno, new Date(existing.issuedAt || now));
+        const allowedAgain = new Date(nextInterval.getTime() - 5 * 60 * 1000); // 5 minutos antes
+        if (now < allowedAgain) {
+          const minutesLeft = Math.ceil((allowedAgain - now) / 60000);
+          Alert.alert(
+            'Já recebeu',
+            `Você já recebeu o ticket. Será possível receber novamente a partir de ${allowedAgain.toLocaleString()} (daqui ~${minutesLeft} min).`
+          );
+          return;
+        }
+        // permitido: sobrescrever com novo ticket (novo issuedAt)
+      }
+
+      // salvar ticket como válido
+      const ticket = { studentId: student.id, status: 'valid', issuedAt: now.toISOString() };
+      await AsyncStorage.setItem(key, JSON.stringify(ticket));
+      setTicketValidated(true);
+      Alert.alert('Sucesso', 'Ticket recebido com sucesso.');
+    } catch (e) {
+      Alert.alert('Erro', 'Não foi possível salvar o ticket: ' + (e.message || e));
+    }
   };
 
   const canPress = locationGranted && isInRegion;
